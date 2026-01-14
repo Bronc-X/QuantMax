@@ -48,6 +48,38 @@ git clone https://github.com/Bronc-X/QuantMax.git && cd QuantMax
 quantopen export-qlib  # 自动生成 calendars/instruments/features
 ```
 
+### 5. 实盘信号采集 (Real-time Signal)
+开始积累真实的 Alpha 信号（每日热榜）。
+
+```bash
+# 手动抓取 (默认东方财富)
+quantopen download-hotlist
+
+# 抓取雪球热股榜 (替代同花顺)
+quantopen download-hotlist --source xq
+
+# 推荐：Crontab 定时任务 (每天 09:25)
+# 25 09 * * 1-5 cd /project && .venv/bin/quantopen download-hotlist --source em
+# 26 09 * * 1-5 cd /project && .venv/bin/quantopen download-hotlist --source xq
+```
+
+---
+
+### 6. 云端信号订阅 (SaaS Demo)
+模拟用户从 QuantMax Cloud 获取核心策略信号。
+
+1. 启动模拟服务器 (Mock Server):
+   ```bash
+   python -m quantopen.sdk.mock_server
+   ```
+
+2. 客户端订阅信号:
+   ```bash
+   # 新开一个终端
+   quantopen subscribe --api-key demo_key_123
+   ```
+   *预期输出: "Received 5 Alpha Signals..."*
+
 ---
 
 ## 💎 专业服务 (Subscription Services)

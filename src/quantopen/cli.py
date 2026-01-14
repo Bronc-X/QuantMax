@@ -13,10 +13,57 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()
-def version():
-    """Show version information."""
-    from quantopen import __version__
-    typer.echo(f"QuantOpen v{__version__}")
+def trade(
+    broker: str = typer.Option("xq", help="Broker client: xq, ht, ths, yb"),
+    config: str = typer.Option("easytrader.json", help="Config file for broker login (optional)"),
+):
+    """
+    [Experimental] Connect to broker and show balance/positions.
+    Currently supports EasyTrader backends (e.g. XueQiu).
+    """
+    from quantopen.execution.easytrader_adapter import EasyTraderExecutor
+    import json
+    
+    # Load login kwargs
+    kwargs = {}
+    cfg_path = Path(config)
+    if cfg_path.exists():
+        with cfg_path.open() as f:
+            kwargs = json.load(f)
+            
+    exe = EasyTraderExecutor()
+    try:
+        exe.connect(client=broker, **kwargs)
+        
+        bal = exe.get_balance()
+        logger.info(f"Balance: Assets={bal.total_assets}, Cash={bal.available_cash}")
+        
+        positions = exe.get_positions()
+        logger.info(f"Positions: {len(positions)}")
+        for p in positions:
+            logger.info(f"  {p.symbol}: {p.volume} (Avail: {p.available}) Val: {p.market_value}")
+            
+    except ImportError:
+        logger.error("EasyTrader not installed. Run: pip install easytrader")
+    except Exception as e:
+        logger.error(f"Trade Error: {e}")
+
+
+
+@app.command()
+def download_hotlist(
+    output: str = typer.Option("data/raw/hotlist.csv", help="Path to append hotlist"),
+    source: str = typer.Option("em", help="Source: 'em' (Eastmoney) or 'xq' (XueQiu)"),
+):
+    """
+    Fetch current hotlist and append to CSV.
+    Sources:
+      - em: 东方财富人气榜
+      - xq: 雪球热股榜 (替代无法直接获取的同花顺)
+    """
+    from quantopen.datafeed.hotlist import fetch_and_append_hotlist
+    fetch_and_append_hotlist(output, source=source)
+
 
 
 @app.command()
@@ -157,6 +204,45 @@ def backtest_core(
     logger.info(f"  Max Drawdown: {report['drawdown'].get('max', {}).get('drawdown', 'N/A'):.2f}%")
     logger.info(f"  Total Return: {report['returns'].get('rtot', 0) * 100:.2f}%")
     logger.info(f"  Loaded Symbols: {report['loaded_symbols']}")
+
+
+@app.command()
+def subscribe(
+    api_key: str = typer.Option(..., prompt=True, hide_input=True, help="Your QuantMax API Key"),
+    host: str = typer.Option("http://127.0.0.1:8000/v1", help="API Host (Mock or Real)"),
+    date: str = typer.Option(None, help="Date to fetch signals (YYYY-MM-DD)")
+):
+    """
+    [Pro] Fetch Premium Alpha Signals from QuantMax Cloud.
+    Requires an active subscription API Key.
+    """
+    from quantopen.sdk.client import QuantMaxClient
+    from datetime import datetime
+    
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+        
+    client = QuantMaxClient(api_key=api_key, base_url=host)
+    
+    logger.info(f"Connecting to {host}...")
+    if not client.check_connection():
+        logger.error("Connection failed. Check API Key or Host.")
+        if "127.0.0.1" in host:
+            logger.warning("Tip: Run 'python -m quantopen.sdk.mock_server' in another terminal to start mock server.")
+        return
+
+    logger.success("Authenticated successfully!")
+    logger.info(f"Fetching signals for {date}...")
+    
+    signals = client.get_alpha_signals(date)
+    
+    if signals:
+        logger.info(f"Received {len(signals)} Alpha Signals:")
+        sorted_sigs = sorted(signals.items(), key=lambda x: x[1], reverse=True)
+        for sym, score in sorted_sigs:
+            logger.info(f"  {sym}: {score:.4f}")
+    else:
+        logger.warning("No signals found for this date.")
 
 
 if __name__ == "__main__":
