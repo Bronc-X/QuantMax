@@ -1,0 +1,5 @@
+qlib_dir: "data/qlib_cn_1m"
+market: "cn"
+freq: "1min"
+bars_dir: "data/bars_1m"
+instruments: "all"   # 先导出你bars_dir里有的

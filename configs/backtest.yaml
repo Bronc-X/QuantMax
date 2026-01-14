@@ -1,0 +1,39 @@
+# Backtest Configuration
+# =====================
+
+# Data settings
+data:
+  symbol: "000001"  # 平安银行
+  period: "1"       # 1分钟线
+  adjust: "qfq"     # 前复权
+
+# Broker settings  
+initial_cash: 100000.0
+commission: 0.001  # 0.1% per trade
+
+# Strategy settings
+strategy:
+  name: "base"
+  params: {}
+
+# Feature settings
+features:
+  enabled:
+    - sma_5
+    - sma_10
+    - sma_20
+    - macd
+    - rsi_14
+    - atr_14
+    - volume_ratio
+
+# Risk settings
+risk:
+  max_position_pct: 0.9      # Max 90% of capital per position
+  stop_loss_pct: 0.02        # 2% stop loss
+  take_profit_pct: 0.05      # 5% take profit
+
+# Logging
+logging:
+  level: INFO
+  file: artifacts/backtest.log
