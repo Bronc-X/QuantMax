@@ -80,6 +80,26 @@ quantopen download-hotlist --source xq
    ```
    *预期输出: "Received 5 Alpha Signals..."*
 
+
+
+---
+
+### 7. 机器学习内核 (The Brain)
+**Learning to Rank (LTR)** 核心策略，对齐高频基金方法论。
+
+1. **训练模型**:
+    ```bash
+    # 使用 Scikit-Learn HistGradientBoosting 训练排序模型
+    # 目标: 预测未来 10 分钟收益的截面排名 (Cross-sectional Rank)
+    python scripts/train_model.py
+    ```
+
+2. **回测 ML 策略**:
+    ```bash
+    # 加载训练好的模型进行回测
+    quantopen backtest-core --core quantopen.strategy.ml_strategy:MLCoreStrategy
+    ```
+
 ---
 
 ## 💎 专业服务 (Subscription Services)

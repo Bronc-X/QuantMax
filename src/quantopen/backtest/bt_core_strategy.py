@@ -73,24 +73,56 @@ class CoreStrategyBT(bt.Strategy):
 
     def _build_features_snapshot(self, now: pd.Timestamp) -> pd.DataFrame:
         """
-        Build a per-symbol snapshot from Backtrader data lines.
-        Minimal set: close, prev_close, amount, ret_1
-        You can expand this later (rolling windows etc.) or replace with precomputed features.
+        Build a rich per-symbol snapshot using ML feature engineering.
+        Computes rolling technicals (vol, rsi, etc) for Model Inference.
         """
-        rows = []
+        from quantopen.ml.features import compute_technical_features
+        feat_list = []
+        
+        # Lookback needs to match max rolling window in compute_technical_features (30)
+        lookback = 40 
+        
         for d in self.datas:
             sym = d._name
-            if len(d) < 2:
-                continue
-            close = float(d.close[0])
-            prev_close = float(d.close[-1])
-            amount = float(getattr(d, "amount")[0]) if hasattr(d, "amount") else 0.0
-            ret_1 = close / prev_close - 1.0 if prev_close != 0 else 0.0
-            rows.append((sym, close, prev_close, amount, ret_1))
-        if not rows:
-            return pd.DataFrame(index=pd.Index([], name="symbol"))
-        df = pd.DataFrame(rows, columns=["symbol", "close", "prev_close", "amount", "ret_1"]).set_index("symbol")
-        return df
+            if len(d) < lookback: 
+                continue 
+            
+            # Construct mini-history dataframe
+            data_dict = {
+                "open": list(d.open.get(size=lookback)),
+                "high": list(d.high.get(size=lookback)),
+                "low": list(d.low.get(size=lookback)),
+                "close": list(d.close.get(size=lookback)),
+                "volume": list(d.volume.get(size=lookback)),
+            }
+            if hasattr(d, "amount"):
+                 data_dict["amount"] = list(d.amount.get(size=lookback))
+            else:
+                 # Estimate amount
+                 c = data_dict["close"]
+                 v = data_dict["volume"]
+                 data_dict["amount"] = [p * q for p, q in zip(c, v)]
+            
+            df = pd.DataFrame(data_dict)
+            
+            # Compute features
+            try:
+                feats = compute_technical_features(df)
+                # Take current bar (last row)
+                current = feats.iloc[-1].to_dict()
+                current["symbol"] = sym
+                # Also include raw 'amount' and 'close' for basic filters
+                current["amount"] = data_dict["amount"][-1]
+                current["close"] = data_dict["close"][-1]
+                feat_list.append(current)
+            except Exception as e:
+                pass
+        
+        if not feat_list:
+            return pd.DataFrame()
+            
+        return pd.DataFrame(feat_list).set_index("symbol")
+
 
     def _get_hot_for_day(self, now: pd.Timestamp) -> pd.DataFrame | None:
         if self.hot_df is None:
