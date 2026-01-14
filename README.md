@@ -9,28 +9,22 @@
 
 ## 📦 1. 本地部署
 
-### 环境要求
-- macOS / Linux
-- Python 3.11+
-
-### 一键部署
+### 一键安装（推荐）
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/Bronc-X/QuantMax.git
 cd QuantMax
+./install.sh
+```
 
-# 2. 创建虚拟环境
-python3.11 -m venv .venv
-source .venv/bin/activate
+完成后自动：创建环境 → 安装依赖 → 下载数据 → 运行回测
 
-# 3. 安装依赖
+### 手动安装
+
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e .
-
-# 4. 下载分钟线数据
 quantopen download-1m
-
-# 5. 运行回测验证
 quantopen backtest
 ```
 
